@@ -282,6 +282,12 @@ class QuadDetector:
         img_drawed = draw_point_text(img_drawed, self.intersection[0], self.intersection[1]) # 绘制交点
         self.point_list.append((self.intersection[0], self.intersection[1]))
 
+        try:
+            new_x, new_y = self.colorDetect(img)
+            img_drawed = draw_point_text(img_drawed, new_x, new_y, (0, 255, 0))
+        except:
+            print('Not find machine arm')
+
         # 绘制九宫格的坐标点位置
         for i in range(4):
             img_drawed = draw_point_text(img_drawed, (self.vertices[i][0] + self.scale_vertices[i][0]) // 2, (self.vertices[i][1] + self.scale_vertices[i][1]) // 2, (0, 255, 0))
@@ -301,6 +307,24 @@ class QuadDetector:
 
         return img_drawed
 
+    def colorDetect(self, img):
+        hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  # 转化成HSV图像
+        # 颜色二值化筛选处理
+        inRange_hsv_green = cv2.inRange(hsv, np.array([150, 32, 106]), np.array([255, 255, 193]))
+        # cv2.imshow('inrange_hsv_red', inRange_hsv_green)
+        # 找中心点
+        cnts1 = cv2.findContours(inRange_hsv_green.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
+        c1 = max(cnts1, key=cv2.contourArea)
+        M = cv2.moments(c1)
+        cX1 = int(M["m10"] / M["m00"])
+        cY1 = int(M["m01"] / M["m00"])
+        # cv2.circle(img, (cX1, cY1), 3, (0, 0, 255), -1)
+        rect = cv2.minAreaRect(c1)
+        box = cv2.boxPoints(rect)
+        # cv2.drawContours(img, [np.int0(box)], -1, (0, 0, 255), 2)
+        # cv2.imshow('camera', img)
+        return cX1, cY1
+
 
 if __name__ == '__main__':
     cap = cv2.VideoCapture(0)
@@ -309,7 +333,7 @@ if __name__ == '__main__':
         # 开始用摄像头读数据，返回hx为true则表示读成功，frame为读的图像
         hx, frame = cap.read()
         # 初始化四边形检测器
-        quad_detector = QuadDetector(max_perimeter=1000, min_perimeter=500, scale=200/600, min_angle=30, line_seg_num=6)
+        quad_detector = QuadDetector(1000, 500, 200/600, 30, 6)
 
         try:
             # 四边形检测结果
@@ -320,7 +344,7 @@ if __name__ == '__main__':
         except Exception as e:
             print(e)
 
-        # cv2.imshow('img', frame)
+        cv2.imshow('img', frame)
         # 监测键盘输入是否为q，为q则退出程序
         if cv2.waitKey(1) & 0xFF == ord('q'):  # 按q退出
             break
