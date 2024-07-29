@@ -1,6 +1,5 @@
 import cv2
 import numpy as np
-import sys
 
 class QuadDetector:
     """
@@ -27,6 +26,7 @@ class QuadDetector:
         self.scale_vertices = None
         self.intersection   = None
         self.point_list:list = []
+        self.point_key = {}
 
     def preprocess_image(self):
 
@@ -234,7 +234,6 @@ class QuadDetector:
         self.vertices       = self.find_max_quad_vertices()
         self.scale_vertices = self.find_scale_quad_vertices()
         self.intersection   = self.calculate_intersection()
-        # self.points_list    = self.segment_line()
 
         return self.vertices, self.scale_vertices, self.intersection
     
@@ -282,11 +281,9 @@ class QuadDetector:
         img_drawed = draw_point_text(img_drawed, self.intersection[0], self.intersection[1]) # 绘制交点
         self.point_list.append((self.intersection[0], self.intersection[1]))
 
-        try:
-            new_x, new_y = self.colorDetect(img)
+        new_x, new_y = self.colorDetect(img)
+        if new_x != new_y != -1:
             img_drawed = draw_point_text(img_drawed, new_x, new_y, (0, 255, 0))
-        except:
-            print('Not find machine arm')
 
         # 绘制九宫格的坐标点位置
         for i in range(4):
@@ -305,25 +302,49 @@ class QuadDetector:
                     img_drawed = draw_point_text(img_drawed, new_x, new_y, (0, 255, 0))
                     self.point_list.append((new_x, new_y))
 
+        if len(self.point_list) == 9:
+            self.point_key[5] = self.point_list[0]
+            self.point_key[3] = self.point_list[1]
+            self.point_key[1] = self.point_list[2]
+            self.point_key[7] = self.point_list[3]
+            self.point_key[9] = self.point_list[4]
+            self.point_key[2] = self.point_list[5]
+            self.point_key[4] = self.point_list[6]
+            self.point_key[8] = self.point_list[7]
+            self.point_key[6] = self.point_list[8]
+
         return img_drawed
 
     def colorDetect(self, img):
+        """
+        @img: 需要识别的图像
+        @return: 返回识别到机械臂的坐标(x, y)
+        如果没有识别到返回 (-1, -1)
+        """
+
         hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)  # 转化成HSV图像
         # 颜色二值化筛选处理
         inRange_hsv_green = cv2.inRange(hsv, np.array([150, 32, 106]), np.array([255, 255, 193]))
         # cv2.imshow('inrange_hsv_red', inRange_hsv_green)
-        # 找中心点
-        cnts1 = cv2.findContours(inRange_hsv_green.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
-        c1 = max(cnts1, key=cv2.contourArea)
-        M = cv2.moments(c1)
-        cX1 = int(M["m10"] / M["m00"])
-        cY1 = int(M["m01"] / M["m00"])
-        # cv2.circle(img, (cX1, cY1), 3, (0, 0, 255), -1)
-        rect = cv2.minAreaRect(c1)
-        box = cv2.boxPoints(rect)
-        # cv2.drawContours(img, [np.int0(box)], -1, (0, 0, 255), 2)
-        # cv2.imshow('camera', img)
-        return cX1, cY1
+        try:
+            # 找中心点
+            cnts1 = cv2.findContours(inRange_hsv_green.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
+            c1 = max(cnts1, key=cv2.contourArea)
+            if cv2.contourArea(c1) < 1500:
+                print('not find machine arm')
+                return -1, -1
+            M = cv2.moments(c1)
+            cX1 = int(M["m10"] / M["m00"])
+            cY1 = int(M["m01"] / M["m00"])
+            # cv2.circle(img, (cX1, cY1), 3, (0, 0, 255), -1)
+            rect = cv2.minAreaRect(c1)
+            box = cv2.boxPoints(rect)
+            # cv2.drawContours(img, [np.int0(box)], -1, (0, 0, 255), 2)
+            # cv2.imshow('camera', img)
+            return cX1, cY1
+        except:
+            print('not find machine arm')
+            return -1, -1
 
 
 if __name__ == '__main__':
