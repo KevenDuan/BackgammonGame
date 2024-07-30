@@ -11,6 +11,11 @@ class StepControl:
         self.IN3 = 16 # 接PUL+
         self.IN4 = 13 # 接DIR+
         self.setup()
+
+    def microsecond_sleep(self, sleep_time=500):
+        end_time = time.perf_counter() + (sleep_time - 0.8) / 1e6  # 0.8是时间补偿，需要根据自己PC的性能去实测
+        while time.perf_counter() < end_time:
+            pass
     
     def setup(self):
         GPIO.setwarnings(False)
@@ -26,28 +31,28 @@ class StepControl:
         GPIO.output(self.IN3, w3)
         GPIO.output(self.IN4, w4)
     
-    def y_backward(self, steps, delay=0.00001):  
+    def x_backward(self, steps, delay=0.00001):  
         for i in range(0, steps):
             self.setStep(0, 1, 0, 1)
             time.sleep(delay)
             self.setStep(1, 0, 1, 0)
             time.sleep(delay)
 
-    def y_forward(self, steps, delay=0.00001):  
+    def x_forward(self, steps, delay=0.00001):  
         for i in range(0, steps):
             self.setStep(1, 0, 1, 0)
             time.sleep(delay)
             self.setStep(0, 0, 0, 0)
             time.sleep(delay)
 
-    def x_forward(self, steps, delay=0.00001):  
+    def y_forward(self, steps, delay=0.00001):  
         for i in range(0, steps):
             self.setStep(1, 0, 0, 1)
             time.sleep(delay)
             self.setStep(0, 0, 1, 0)
             time.sleep(delay)
 
-    def x_backward(self, steps, delay=0.00001):  
+    def y_backward(self, steps, delay=0.00001):  
         for i in range(0, steps):
             self.setStep(0, 1, 1, 0)
             time.sleep(delay)
@@ -62,4 +67,4 @@ class StepControl:
 
 if __name__ == "__main__":
     step = StepControl()
-    step.x_forward(10000)
+    step.y_backward(20000)

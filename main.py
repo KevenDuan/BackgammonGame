@@ -2,6 +2,7 @@ import numpy as np
 import quad_detector
 import step
 import cv2
+import time
 
 cap = cv2.VideoCapture(0)
 
@@ -10,9 +11,32 @@ quad_detector = quad_detector.QuadDetector(1000, 500, 200/600, 30, 6) # 初始�
 point_axis = []
 point_key = {}
 
+def move(now_x, now_y, dist_x, dist_y):
+    step.setup()
+    """
+    从(now_x, now_y) -> (dist_x, dist_y)
+    """
+    abs_x = abs(now_x - dist_x) * 125
+    abs_y = abs(now_y - dist_y) * 125
+    if abs_x < 5 and abs_y < 5: return
+    if dist_x > now_x:
+         step.x_forward(abs_x)
+    else: step.x_backward(abs_x)
+
+    if dist_y > now_y:
+        step.y_backward(abs_y)
+    else: step.y_forward(abs_y)
+
+    step.destroy()
+
 while (True):
     # 开始用摄像头读数据，返回hx为true则表示读成功，frame为读的图像
     hx, frame = cap.read()
+    hx, frame = cap.read()
+    hx, frame = cap.read()
+    hx, frame = cap.read()
+    hx, frame = cap.read()
+
     # 初始化四边形检测器
     try:
         if len(point_axis) == 0:
@@ -27,16 +51,22 @@ while (True):
         print(e)
 
     print(point_key)
-    machine_x, machine_y = quad_detector.colorDetect(frame)
-    print(machine_x, machine_y)
+    print(point_axis)
+    machine_x, machine_y = quad_detector.detectMachineArm(frame)
+    print('axis:', (machine_x, machine_y))
+
+    if machine_x != machine_y != -1:
+        move(machine_x, machine_y, point_key[5][0], point_key[5][1])
+    # black_x, black_y = quad_detector.detectBlack(frame)
+    # print(black_x, black_y)
 
     # cv2.imshow('img', frame)
-    # # 监测键盘输入是否为q，为q则退出程序
+    # # # # 监测键盘输入是否为q，为q则退出程序
     # if cv2.waitKey(1) & 0xFF == ord('q'):  # 按q退出
-    #     break
+    #      break
 
-# 释放摄像头
-cap.release()
+# # 释放摄像头
+# cap.release()
 
-# 结束所有窗口
-cv2.destroyAllWindows()
+# # 结束所有窗口
+# cv2.destroyAllWindows()
