@@ -276,17 +276,17 @@ class QuadDetector:
             )
             return img
 
+        img_drawed = self.chess_detection(self.img)
         img_drawed = draw_lines_points(self.img, self.vertices)          # 绘制最大四边形
         img_drawed = draw_lines_points(img_drawed, self.scale_vertices)  # 绘制缩放四边形
         img_drawed = draw_point_text(img_drawed, self.intersection[0], self.intersection[1]) # 绘制交点
         self.point_list.append((self.intersection[0], self.intersection[1]))
 
+        
+
         new_x, new_y = self.detectMachineArm(img)
         if new_x != new_y != -1:
             img_drawed = draw_point_text(img_drawed, new_x, new_y, (0, 255, 0))
-        new_x, new_y = self.detectBlack(img)
-        if new_x != new_y != -1:
-            img_drawed = draw_point_text(img_drawed, new_x, new_y, (0, 0, 255))
 
         # 绘制九宫格的坐标点位置
         for i in range(4):
@@ -353,37 +353,49 @@ class QuadDetector:
             print('not find machine arm')
             return -1, -1
         
-    def detectBlack(self, img):
-        """
-        @img: 需要识别的图像
-        @return: 返回识别到机械臂的坐标(x, y)
-        如果没有识别到返回 (-1, -1)
-        """
-        dst = cv2.GaussianBlur(img, (25, 25), 0)
+    def chess_detection(self, frame):
+        # 定义颜色范围（在HSV颜色空间中）
+        dst1 = cv2.GaussianBlur(frame, (9, 9), 0)
+        dst2 = cv2.GaussianBlur(frame, (21, 21), 0)
+        lower_white = np.array([102, 23, 210])
+        upper_white = np.array([156, 142, 255])
+        lower_black = np.array([85, 95, 15])
+        upper_black = np.array([160, 221, 151])
 
-        hsv = cv2.cvtColor(dst, cv2.COLOR_BGR2HSV)  # 转化成HSV图像
-        # 颜色二值化筛选处理
-        inRange_hsv_green = cv2.inRange(hsv, np.array([108, 89, 41]), np.array([140, 144, 74]))
-        # cv2.imshow('inrange_hsv_red', inRange_hsv_green)
-        try:
-            # 找中心点
-            cnts1 = cv2.findContours(inRange_hsv_green.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
-            c1 = max(cnts1, key=cv2.contourArea)
-            if cv2.contourArea(c1) < 300:
-                print('not find black dot')
-                return -1, -1
-            M = cv2.moments(c1)
-            cX1 = int(M["m10"] / M["m00"])
-            cY1 = int(M["m01"] / M["m00"])
-            # cv2.circle(img, (cX1, cY1), 3, (0, 0, 255), -1)
-            rect = cv2.minAreaRect(c1)
-            box = cv2.boxPoints(rect)
-            # cv2.drawContours(img, [np.int0(box)], -1, (0, 0, 255), 2)
-            # cv2.imshow('camera', img)
-            return cX1, cY1
-        except:
-            print('not find black dot')
-            return -1, -1
+        # 将帧转换为HSV颜色空间
+        hsv_frame1 = cv2.cvtColor(dst1, cv2.COLOR_BGR2HSV)
+        hsv_frame2 = cv2.cvtColor(dst2, cv2.COLOR_BGR2HSV)
+
+        # 根据颜色范围创建掩膜
+        white_mask = cv2.inRange(hsv_frame1, lower_white, upper_white)
+        black_mask = cv2.inRange(hsv_frame2, lower_black, upper_black)
+
+
+        # 对掩膜进行形态学操作，以去除噪声
+        kernel1 = np.ones((15, 15), np.uint8)
+        kernel2 = np.ones((9, 9), np.uint8)
+        white_mask = cv2.dilate(white_mask, kernel2, iterations = 1)
+        # white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel1)
+        black_mask = cv2.morphologyEx(black_mask, cv2.MORPH_OPEN, kernel1)
+        cv2.imshow('white_inrange', white_mask)
+        cv2.imshow('black_inrange', black_mask)
+
+        # 在原始帧中找到颜色区域并绘制方框
+        contours, _ = cv2.findContours(white_mask + black_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        for contour in contours:
+            x, y, w, h = cv2.boundingRect(contour)
+            color = ""
+            if cv2.contourArea(contour) > 600 and h * 1.2 > w and w * 1.2 > h:  # 设置最小区域面积以排除噪声
+                if np.any(white_mask[y:y + h, x:x + w]):
+                    color = "white"
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+                elif np.any(black_mask[y:y + h, x:x + w]):
+                    color = "black"
+                    cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+                cv2.putText(frame, color, (x - 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
+
+        return frame
 
 
 if __name__ == '__main__':
