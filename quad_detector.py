@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import time
 
 class QuadDetector:
     """
@@ -27,6 +28,7 @@ class QuadDetector:
         self.intersection   = None
         self.point_list:list = []
         self.point_key = {}
+        self.black_list = []
 
     def preprocess_image(self):
 
@@ -246,13 +248,13 @@ class QuadDetector:
 
         def draw_point_text(img, x, y, bgr = (0, 0, 255)): #绘制一个点，并显示其坐标。
             cv2.circle(img, (x, y), 6, bgr, -1)
-            cv2.putText(
-                img,
-                f"({x}, {y})",
-                (x + 5, y - 5),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5, (0, 0, 255), 1, cv2.LINE_AA,
-            )
+            # cv2.putText(
+            #     img,
+            #     f"({x}, {y})",
+            #     (x + 5, y - 5),
+            #     cv2.FONT_HERSHEY_SIMPLEX,
+            #     0.5, (0, 0, 255), 1, cv2.LINE_AA,
+            # )
             return img
 
         def draw_lines_points(img, vertices, bold=2):
@@ -276,7 +278,7 @@ class QuadDetector:
             )
             return img
 
-        img_drawed = self.chess_detection(self.img)
+        img_drawed = self.chess_detection(self.img[:, :])
         img_drawed = draw_lines_points(self.img, self.vertices)          # 绘制最大四边形
         img_drawed = draw_lines_points(img_drawed, self.scale_vertices)  # 绘制缩放四边形
         img_drawed = draw_point_text(img_drawed, self.intersection[0], self.intersection[1]) # 绘制交点
@@ -356,11 +358,11 @@ class QuadDetector:
     def chess_detection(self, frame):
         # 定义颜色范围（在HSV颜色空间中）
         dst1 = cv2.GaussianBlur(frame, (9, 9), 0)
-        dst2 = cv2.GaussianBlur(frame, (21, 21), 0)
-        lower_white = np.array([102, 23, 210])
-        upper_white = np.array([156, 142, 255])
-        lower_black = np.array([85, 95, 15])
-        upper_black = np.array([160, 221, 151])
+        dst2 = cv2.GaussianBlur(frame, (9, 9), 0)
+        lower_white = np.array([0, 0, 46])
+        upper_white = np.array([180, 65, 255])
+        lower_black = np.array([0, 0, 0])
+        upper_black = np.array([180, 255, 80])
 
         # 将帧转换为HSV颜色空间
         hsv_frame1 = cv2.cvtColor(dst1, cv2.COLOR_BGR2HSV)
@@ -372,11 +374,11 @@ class QuadDetector:
 
 
         # 对掩膜进行形态学操作，以去除噪声
-        kernel1 = np.ones((15, 15), np.uint8)
+        kernel1 = np.ones((9, 9), np.uint8)
         kernel2 = np.ones((9, 9), np.uint8)
-        white_mask = cv2.dilate(white_mask, kernel2, iterations = 1)
-        # white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel1)
-        black_mask = cv2.morphologyEx(black_mask, cv2.MORPH_OPEN, kernel1)
+        # white_mask = cv2.dilate(white_mask, kernel2, iterations = 1)
+        white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel1)
+        black_mask = cv2.morphologyEx(black_mask, cv2.MORPH_OPEN, kernel2)
         cv2.imshow('white_inrange', white_mask)
         cv2.imshow('black_inrange', black_mask)
 
@@ -385,7 +387,7 @@ class QuadDetector:
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
             color = ""
-            if cv2.contourArea(contour) > 600 and h * 1.2 > w and w * 1.2 > h:  # 设置最小区域面积以排除噪声
+            if 1000 > cv2.contourArea(contour) > 100 and h * 1.2 > w and w * 1.2 > h:  # 设置最小区域面积以排除噪声
                 if np.any(white_mask[y:y + h, x:x + w]):
                     color = "white"
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
@@ -404,8 +406,10 @@ if __name__ == '__main__':
     while (True):
         # 开始用摄像头读数据，返回hx为true则表示读成功，frame为读的图像
         hx, frame = cap.read()
+        up, down, l, r = 200, -120, 210, -170
+        frame = frame[up:down, l:r]
         # 初始化四边形检测器
-        quad_detector = QuadDetector(1000, 500, 200/600, 30, 6)
+        quad_detector = QuadDetector(9999, 200, 200/600, 30, 6)
 
         try:
             # 四边形检测结果
@@ -417,8 +421,10 @@ if __name__ == '__main__':
             print(e)
             
         x, y = quad_detector.detectMachineArm(frame)
+        print(quad_detector.black_list)
 
         cv2.imshow('img', frame)
+
         # 监测键盘输入是否为q，为q则退出程序
         if cv2.waitKey(1) & 0xFF == ord('q'):  # 按q退出
             break
