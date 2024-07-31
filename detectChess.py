@@ -46,6 +46,7 @@ def color_detection(frame):
     return frame
 
 
+
 # 打开摄像头
 cap = cv2.VideoCapture(0)
 
