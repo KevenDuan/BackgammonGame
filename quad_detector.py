@@ -288,7 +288,7 @@ class QuadDetector:
 
         new_x, new_y = self.detectMachineArm(img)
         if new_x != new_y != -1:
-            img_drawed = draw_point_text(img_drawed, new_x, new_y, (0, 255, 0))
+            img_drawed = draw_point_text(img_drawed, new_x, new_y, (255, 0, 0))
 
         # 绘制九宫格的坐标点位置
         for i in range(4):
@@ -326,19 +326,19 @@ class QuadDetector:
         @return: 返回识别到机械臂的坐标(x, y)
         如果没有识别到返回 (-1, -1)
         """
-        dst = cv2.GaussianBlur(img, (25, 25), 0)
+        dst = cv2.GaussianBlur(img, (5, 5), 0)
 
         hsv = cv2.cvtColor(dst, cv2.COLOR_BGR2HSV)  # 转化成HSV图像
         # 颜色二值化筛选处理
-        inRange_hsv_green = cv2.inRange(hsv, np.array([126, 43, 46]), np.array([255, 255, 255]))
-        # cv2.imshow('inrange_hsv_re', inRange_hsv_green)
+        inRange_hsv_green = cv2.inRange(hsv, np.array([150, 43, 46]), np.array([185, 255, 255]))
+        cv2.imshow('inrange_hsv_red', inRange_hsv_green)
 
         # cv2.waitKey()
         try:
             # 找中心点
             cnts1 = cv2.findContours(inRange_hsv_green.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
             c1 = max(cnts1, key=cv2.contourArea)
-            if cv2.contourArea(c1) < 100:
+            if cv2.contourArea(c1) > 500:
                 print('not find machine arm')
                 return -1, -1
             M = cv2.moments(c1)
@@ -406,7 +406,8 @@ if __name__ == '__main__':
     while (True):
         # 开始用摄像头读数据，返回hx为true则表示读成功，frame为读的图像
         hx, frame = cap.read()
-        up, down, l, r = 200, -120, 210, -170
+        # print(frame.shape) # 480 * 640 * 3
+        up, down, l, r = 160, -150, 210, -170
         frame = frame[up:down, l:r]
         # 初始化四边形检测器
         quad_detector = QuadDetector(9999, 200, 200/600, 30, 6)
