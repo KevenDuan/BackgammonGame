@@ -4,27 +4,27 @@ import step
 import cv2
 import electromagnets
 import sys
+import time
 
 cap = cv2.VideoCapture(0)
 
-step = step.StepControl() # 初始化步进电机
-quad_detector = quad_detector.QuadDetector(1000, 200, 200/600, 30, 6) # 初始化视觉类
+quad_detector = quad_detector.QuadDetector(9999, 200, 200/600, 30, 6) # 初始化视觉类
 point_axis = []
 black_list = []
 point_key = {}
 ox, oy = 0, 0
 # 回到初始位置
-step.x_forward(24000)
+step = step.StepControl() # 初始化步进电机
 
 def move(now_x, now_y, dist_x, dist_y):
     step.setup()
     """
     从(now_x, now_y) -> (dist_x, dist_y)
     """
-    abs_x = abs(now_x - dist_x) * 125
-    abs_y = abs(now_y - dist_y) * 125
+    abs_x = abs(now_x - dist_x) * 50
+    abs_y = abs(now_y - dist_y) * 50
     if abs_x <= 1 and abs_y <= 1:
-        step.y_backward(4500)
+        step.y_backward(3000)
         print('sucessfully!')
         return True
     if dist_x > now_x:
@@ -34,13 +34,13 @@ def move(now_x, now_y, dist_x, dist_y):
     if dist_y > now_y:
         step.y_backward(abs_y)
     else: step.y_forward(abs_y)
-    step.destroy()
     return False
 
 #######################################
-up, down, l, r = 160, -150, 210, -170
+up, down, l, r = 100, -80, 140, -120
 #######################################
 while True:
+    e = electromagnets.Electromagnets()
     # e.open()
     # 开始用摄像头读数据，返回hx为true则表示读成功，frame为读的图像
     hx, frame = cap.read()
@@ -61,25 +61,23 @@ while True:
             cv2.imshow('detect', img_detected)
             point_axis = quad_detector.point_list
             point_key = quad_detector.point_key
+
+        if len(black_list) == 0:
+            quad_detector.chess_detection(frame)
             black_list = quad_detector.black_list
+            
+        black_list = quad_detector.black_list
         
     except Exception as e:
         print(e)
     
-    # print(point_key)
-    # print(point_axis)
+    print(point_key)
+    print(point_axis)
     
     machine_x, machine_y = quad_detector.detectMachineArm(frame)
     print('axis:', (machine_x, machine_y))
-
-    # move(machine_x, machine_y, point_key[5][0], point_key[5][1])
-    # if abs(machine_x - point_key[5][0]) == 0 and abs(machine_y - point_key[5][1]) == 0:
-    #     e.close()
-    #     move(point_key[5][0], point_key[5][1], ox, oy)
-    #     print('sucesfully!')
-    #     break
     
-    if len(black_list) > 0:
+    if len(black_list) > 0 and (len(point_axis) != 0):
         black_x, black_y = black_list[0][0], black_list[0][1]
         print('black_axis: ', (black_x, black_y))
         while True: 
@@ -92,11 +90,16 @@ while True:
             frame = frame[up:down, l:r]
             machine_x, machine_y = quad_detector.detectMachineArm(frame)
             if move(machine_x, machine_y, black_x, black_y):
+                step.down()
+                time.sleep(0.02)
                 print('拿棋子成功')
                 e = electromagnets.Electromagnets()
                 e.open()
+                time.sleep(0.02)
+                step.up()
+                time.sleep(0.02)
                 break
-
+        
         while True:
             e = electromagnets.Electromagnets()
             e.open()
@@ -110,16 +113,15 @@ while True:
             machine_x, machine_y = quad_detector.detectMachineArm(frame)
             if move(machine_x, machine_y, point_key[5][0], point_key[5][1]):
                 print('放棋子成功')
-                e = electromagnets.Electromagnets()
+                step.down()
+                time.sleep(0.02)
                 e.close()
+                time.sleep(0.02)
+                step.up()
+                time.sleep(0.02)
+                move(point_key[5][0], point_key[5][1], 0, 0)
+                sys.exit()
                 break
-
-    print('####################')
-    if move(point_key[5][0], point_key[5][1], ox, oy):
-        ('**************************')
-        sys.exit()
-    else:
-        sys.exit()
 
     # while True:
     #     a = int(input('input: '))

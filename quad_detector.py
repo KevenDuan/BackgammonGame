@@ -6,7 +6,7 @@ class QuadDetector:
     """
     四边形检测类
     """
-    def __init__(self, max_perimeter=1000, min_perimeter=500, scale=1, min_angle=30, line_seg_num=4):
+    def __init__(self, max_perimeter=9999, min_perimeter=100, scale=1, min_angle=30, line_seg_num=4):
         """
         @param img: 图像来源
         @param max_perimeter: 允许的最大周长
@@ -29,6 +29,7 @@ class QuadDetector:
         self.point_list:list = []
         self.point_key = {}
         self.black_list = []
+        self.white_list = []
 
     def preprocess_image(self):
 
@@ -37,7 +38,7 @@ class QuadDetector:
         """
         gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)  # 转换为灰度图像
 
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)  # 高斯滤波去噪
+        blur = cv2.GaussianBlur(gray, (7, 7), 0)  # 高斯滤波去噪
 
         # 减小曝光
         # exposure_adjusted = cv2.addWeighted(blur, 0.5, np.zeros(blur.shape, dtype=blur.dtype), 0, 50)
@@ -51,7 +52,7 @@ class QuadDetector:
         # _, threshold = cv2.threshold(blur, 157, 255, cv2.THRESH_BINARY) # 二值化
 
         edges = cv2.Canny(blur, 50, 200)
-        # cv2.imshow('edge', edges)
+        cv2.imshow('edge', edges)
         self.pre_img = edges
 
     def find_max_quad_vertices(self):
@@ -65,7 +66,7 @@ class QuadDetector:
         # 遍历轮廓列表
         for cnt in contours:
             # 将当前轮廓近似为四边形
-            approx = cv2.approxPolyDP(cnt, 0.09 * cv2.arcLength(cnt, True), True)
+            approx = cv2.approxPolyDP(cnt, 0.01 * cv2.arcLength(cnt, True), True) # 0.01
             # 确保转换后的形状为四边形
             if len(approx) == 4:
                 # 计算四边形周长
@@ -338,7 +339,7 @@ class QuadDetector:
             # 找中心点
             cnts1 = cv2.findContours(inRange_hsv_green.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)[-2]
             c1 = max(cnts1, key=cv2.contourArea)
-            if cv2.contourArea(c1) > 500:
+            if cv2.contourArea(c1) > 1000:
                 print('not find machine arm')
                 return -1, -1
             M = cv2.moments(c1)
@@ -360,9 +361,9 @@ class QuadDetector:
         dst1 = cv2.GaussianBlur(frame, (9, 9), 0)
         dst2 = cv2.GaussianBlur(frame, (9, 9), 0)
         lower_white = np.array([0, 0, 46])
-        upper_white = np.array([180, 65, 255])
+        upper_white = np.array([180, 70, 255])
         lower_black = np.array([0, 0, 0])
-        upper_black = np.array([180, 255, 80])
+        upper_black = np.array([180, 255, 131])
 
         # 将帧转换为HSV颜色空间
         hsv_frame1 = cv2.cvtColor(dst1, cv2.COLOR_BGR2HSV)
@@ -387,13 +388,28 @@ class QuadDetector:
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
             color = ""
-            if 1000 > cv2.contourArea(contour) > 100 and h * 1.2 > w and w * 1.2 > h:  # 设置最小区域面积以排除噪声
+            if 2000 > cv2.contourArea(contour) > 200 and h * 1.25 > w and w * 1.25 > h:  # 设置最小区域面积以排除噪声
                 if np.any(white_mask[y:y + h, x:x + w]):
                     color = "white"
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
+
+                    new_x, new_y = x + w//2, y + h//2
+                    for x, y in self.white_list:
+                        if (x - 3 <= new_x <= x + 3) and (y - 3 <= new_y <= y + 3):
+                            break
+                    else:
+                        if len(self.white_list) < 5: self.white_list.append((new_x, new_y))
+
                 elif np.any(black_mask[y:y + h, x:x + w]):
                     color = "black"
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+
+                    new_x, new_y = x + w//2, y + h//2
+                    for x, y in self.black_list:
+                        if (x - 3 <= new_x <= x + 3) and (y - 3 <= new_y <= y + 3):
+                            break
+                    else:
+                        if len(self.black_list) < 5: self.black_list.append((new_x, new_y))
 
                 cv2.putText(frame, color, (x - 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255, 0, 0), 2)
 
@@ -407,7 +423,7 @@ if __name__ == '__main__':
         # 开始用摄像头读数据，返回hx为true则表示读成功，frame为读的图像
         hx, frame = cap.read()
         # print(frame.shape) # 480 * 640 * 3
-        up, down, l, r = 160, -150, 210, -170
+        up, down, l, r = 100, -80, 140, -120
         frame = frame[up:down, l:r]
         # 初始化四边形检测器
         quad_detector = QuadDetector(9999, 200, 200/600, 30, 6)
@@ -422,7 +438,9 @@ if __name__ == '__main__':
             print(e)
             
         x, y = quad_detector.detectMachineArm(frame)
-        print(quad_detector.black_list)
+        print('black_list: ', quad_detector.black_list)
+        print('white_list: ', quad_detector.white_list)
+
 
         cv2.imshow('img', frame)
 
