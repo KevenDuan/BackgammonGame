@@ -3,68 +3,85 @@ import time
 
 class StepControl:
     def __init__(self):
-        # 规定GPIO引脚
-        # 第一个步进电机
-        self.IN1 = 18      # 接PUL+
-        self.IN2 = 15      # 接DIR+
-        # 第二个步进电机
-        self.IN3 = 16 # 接PUL+
-        self.IN4 = 13 # 接DIR+
-        self.setup()
-
-    def microsecond_sleep(self, sleep_time=500):
-        end_time = time.perf_counter() + (sleep_time - 0.8) / 1e6  # 0.8是时间补偿，需要根据自己PC的性能去实测
-        while time.perf_counter() < end_time:
-            pass
-    
-    def setup(self):
+        """
+        step1: 13 and 15
+        step2: 16 and 18
+        """
         GPIO.setwarnings(False)
-        GPIO.setmode(GPIO.BOARD)       # Numbers GPIOs by physical location
-        GPIO.setup(self.IN1, GPIO.OUT)      # Set pin's mode is output
+        # 设置GPIO模式为BCM
+        GPIO.setmode(GPIO.BOARD)
+        # x轴
+        self.IN1 = 13  # 连接到PUL+
+        self.IN2 = 15  # 连接DIR+
+        # y轴
+        self.IN3 = 16  # 连接到PUL+
+        self.IN4 = 18  # 连接DIR+
+        # z轴
+        self.IN5 = 36  # 连接到PUL+
+        self.IN6 = 38  # 连接DIR+
+
+    def setup(self):
+        # 设置GPIO口为输出
+        GPIO.setup(self.IN1, GPIO.OUT)
         GPIO.setup(self.IN2, GPIO.OUT)
         GPIO.setup(self.IN3, GPIO.OUT)
         GPIO.setup(self.IN4, GPIO.OUT)
-        
-    def setStep(self, w1, w2, w3, w4):
-        GPIO.output(self.IN1, w1)
-        GPIO.output(self.IN2, w2)
-        GPIO.output(self.IN3, w3)
-        GPIO.output(self.IN4, w4)
+        GPIO.setup(self.IN5, GPIO.OUT)
+        GPIO.setup(self.IN6, GPIO.OUT)
+
+    # 定义发送脉冲函数
+    def send_pulse(self, pur, dir, steps, direction):
+        # 设置方向
+        if direction: GPIO.output(dir, GPIO.HIGH)  # 正转
+        else: GPIO.output(dir, GPIO.LOW)   # 反转
+
+        # 发送脉冲信号
+        for _ in range(steps):
+            GPIO.output(pur, GPIO.HIGH)
+            time.sleep(0.0001)  # 脉冲持续时间
+            GPIO.output(pur, GPIO.LOW)
+            time.sleep(0.0001)  # 脉冲间隔时间
+
+    def x_backward(self, step):
+        self.setup()
+        self.send_pulse(self.IN1, self.IN2, step, False)
+        self.clean()
     
-    def x_backward(self, steps, delay=0.00001):  
-        for i in range(0, steps):
-            self.setStep(0, 1, 0, 1)
-            time.sleep(delay)
-            self.setStep(1, 0, 1, 0)
-            time.sleep(delay)
+    def x_forward(self, step):
+        self.setup()
+        self.send_pulse(self.IN1, self.IN2, step, True)
+        self.clean()
 
-    def x_forward(self, steps, delay=0.00001):  
-        for i in range(0, steps):
-            self.setStep(1, 0, 1, 0)
-            time.sleep(delay)
-            self.setStep(0, 0, 0, 0)
-            time.sleep(delay)
+    def y_forward(self, step):
+        self.setup()
+        self.send_pulse(self.IN3, self.IN4, step, True)
+        self.clean()
 
-    def y_forward(self, steps, delay=0.00001):  
-        for i in range(0, steps):
-            self.setStep(1, 0, 0, 1)
-            time.sleep(delay)
-            self.setStep(0, 0, 1, 0)
-            time.sleep(delay)
+    def y_backward(self, step):
+        self.setup()
+        self.send_pulse(self.IN3, self.IN4, step, False)
+        self.clean()
 
-    def y_backward(self, steps, delay=0.00001):  
-        for i in range(0, steps):
-            self.setStep(0, 1, 1, 0)
-            time.sleep(delay)
-            self.setStep(1, 0, 0, 0)
-            time.sleep(delay)
+    def clean(self):
+        GPIO.cleanup()
 
-    def stop(self):
-        self.setStep(0, 0, 0, 0)
-    
-    def destroy(self):
-        GPIO.cleanup() # 释放数据
+    def down(self):
+        self.setup()
+        self.send_pulse(self.IN5, self.IN6, 1000, False)
+        self.clean()
+        self.flag = False
+
+    def up(self):
+        self.setup()
+        self.send_pulse(self.IN5, self.IN6, 1000, True)
+        self.clean()
+
 
 if __name__ == "__main__":
     step = StepControl()
-    step.y_backward(20000)
+    step.setup() # 初始化gpio
+    # step.y_forward(5000)
+    step.down()
+
+    step.clean()
+
