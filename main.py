@@ -3,6 +3,7 @@ import quad_detector
 import step
 import cv2
 import electromagnets
+import sys
 
 cap = cv2.VideoCapture(0)
 
@@ -11,7 +12,7 @@ quad_detector = quad_detector.QuadDetector(1000, 200, 200/600, 30, 6) # 初始�
 point_axis = []
 black_list = []
 point_key = {}
-ox, oy = 100, 100
+ox, oy = 0, 0
 # 回到初始位置
 step.x_forward(24000)
 
@@ -40,8 +41,7 @@ def move(now_x, now_y, dist_x, dist_y):
 up, down, l, r = 160, -150, 210, -170
 #######################################
 while True:
-    e = electromagnets.Electromagnets()
-    e.open()
+    # e.open()
     # 开始用摄像头读数据，返回hx为true则表示读成功，frame为读的图像
     hx, frame = cap.read()
     hx, frame = cap.read()
@@ -61,15 +61,16 @@ while True:
             cv2.imshow('detect', img_detected)
             point_axis = quad_detector.point_list
             point_key = quad_detector.point_key
+            black_list = quad_detector.black_list
         
     except Exception as e:
         print(e)
     
-    print(point_key)
-    print(point_axis)
+    # print(point_key)
+    # print(point_axis)
     
-    # machine_x, machine_y = quad_detector.detectMachineArm(frame)
-    # print('axis:', (machine_x, machine_y))
+    machine_x, machine_y = quad_detector.detectMachineArm(frame)
+    print('axis:', (machine_x, machine_y))
 
     # move(machine_x, machine_y, point_key[5][0], point_key[5][1])
     # if abs(machine_x - point_key[5][0]) == 0 and abs(machine_y - point_key[5][1]) == 0:
@@ -78,14 +79,11 @@ while True:
     #     print('sucesfully!')
     #     break
     
-    # if len(black_list) > 0:
-    #     black_x, black_y = black_list[0][0], black_list[0][1]
-    #     print('black_axis: ', (black_x, black_y))
-    #     move(machine_x, machine_y, black_x, black_y)
-
-    while True:
-        a = int(input('input: '))
-        while True:
+    if len(black_list) > 0:
+        black_x, black_y = black_list[0][0], black_list[0][1]
+        print('black_axis: ', (black_x, black_y))
+        while True: 
+            hx, frame = cap.read()
             hx, frame = cap.read()
             hx, frame = cap.read()
             hx, frame = cap.read()
@@ -93,10 +91,50 @@ while True:
             hx, frame = cap.read()
             frame = frame[up:down, l:r]
             machine_x, machine_y = quad_detector.detectMachineArm(frame)
-            print('axis:', (machine_x, machine_y))
-            if machine_x != machine_y != -1:
-                if move(machine_x, machine_y, point_key[a][0], point_key[a][1]):
-                    break 
+            if move(machine_x, machine_y, black_x, black_y):
+                print('拿棋子成功')
+                e = electromagnets.Electromagnets()
+                e.open()
+                break
+
+        while True:
+            e = electromagnets.Electromagnets()
+            e.open()
+            hx, frame = cap.read()
+            hx, frame = cap.read()
+            hx, frame = cap.read()
+            hx, frame = cap.read()
+            hx, frame = cap.read()
+            hx, frame = cap.read()
+            frame = frame[up:down, l:r]
+            machine_x, machine_y = quad_detector.detectMachineArm(frame)
+            if move(machine_x, machine_y, point_key[5][0], point_key[5][1]):
+                print('放棋子成功')
+                e = electromagnets.Electromagnets()
+                e.close()
+                break
+
+    print('####################')
+    if move(point_key[5][0], point_key[5][1], ox, oy):
+        ('**************************')
+        sys.exit()
+    else:
+        sys.exit()
+
+    # while True:
+    #     a = int(input('input: '))
+    #     while True:
+    #         hx, frame = cap.read()
+    #         hx, frame = cap.read()
+    #         hx, frame = cap.read()
+    #         hx, frame = cap.read()
+    #         hx, frame = cap.read()
+    #         frame = frame[up:down, l:r]
+    #         machine_x, machine_y = quad_detector.detectMachineArm(frame)
+    #         print('axis:', (machine_x, machine_y))
+    #         if machine_x != machine_y != -1:
+    #             if move(machine_x, machine_y, point_key[a][0], point_key[a][1]):
+    #                 break 
 
 #     cv2.imshow('img', frame)
 #     # # # 监测键盘输入是否为q，为q则退出程序
