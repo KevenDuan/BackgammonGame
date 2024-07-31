@@ -5,6 +5,7 @@ import cv2
 import electromagnets
 import time
 import backgammon
+import sys
 
 def move(now_x, now_y, dist_x, dist_y):
     """
@@ -202,6 +203,10 @@ if __name__ == "__main__":
                         pos = gammon.axis_turn_key(xx, yy)
                         move_black(pos)
                         gammon.board[xx][yy] = 'O'
+
+                        if gammon.evaluate(gammon.board) == 10:
+                            print('machine win!')
+                            sys.exit()
         
         print(point_key) # 打印出坐标信息
         # print(point_axis)
