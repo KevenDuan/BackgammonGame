@@ -61,6 +61,7 @@ if __name__ == "__main__":
                 img_detected = quad_detector.draw(frame)  # 绘制检测结果
                 # 显示摄像头图像，其中的video为窗口名称，frame为图像
                 cv2.imshow('detect', img_detected)
+
                 point_axis = quad_detector.point_list
                 point_key = quad_detector.point_key
 
@@ -82,13 +83,16 @@ if __name__ == "__main__":
         # print(point_axis)
         
         machine_x, machine_y = quad_detector.detectMachineArm(frame)
-        print('axis:', (machine_x, machine_y))
+        print('machine_axis:', (machine_x, machine_y))
 
-        # 从机械臂当前位置移动到白色棋子        
-        if len(black_list) > 0 and len(point_axis) != 0:
-            white_x, white_y = black_list[0][0], black_list[0][1]
-            print('white_axis: ', (black_list, black_list))
+            
+        # 从机械臂当前位置移动到黑色棋子        
+        while len(black_list) > 0 and len(point_axis) != 0:
+            zip_axis = black_list.pop()
+            black_x, black_y = zip_axis[0], zip_axis[1]
+            print('black_axis: ', (black_x, black_y))
             while True: 
+                e = electromagnets.Electromagnets()
                 hx, frame = cap.read()
                 hx, frame = cap.read()
                 hx, frame = cap.read()
@@ -97,18 +101,18 @@ if __name__ == "__main__":
                 hx, frame = cap.read()
                 frame = frame[up:down, l:r]
                 machine_x, machine_y = quad_detector.detectMachineArm(frame)
-                if move(machine_x, machine_y, black_list, black_list):
-                    step.down()
+                if move(machine_x, machine_y, black_x, black_y):
+                    step.down() # 落下电磁铁
                     time.sleep(0.02)
+                    e.open() # 启动电磁铁吸取
                     print('拿棋子成功')
-                    e = electromagnets.Electromagnets()
-                    e.open()
                     time.sleep(0.02)
-                    step.up()
+
+                    step.up() # 抬起电磁铁
                     time.sleep(0.02)
                     break
             
-            # 从白色棋子移动到5号九宫格
+
             while True:
                 e = electromagnets.Electromagnets()
                 e.open()
@@ -121,13 +125,16 @@ if __name__ == "__main__":
                 frame = frame[up:down, l:r]
                 machine_x, machine_y = quad_detector.detectMachineArm(frame)
                 if move(machine_x, machine_y, point_key[5][0], point_key[5][1]):
+                    step.down() # 落下电磁铁
+                    time.sleep(0.02)
+                    e.close() # 释放吸力
+                    time.sleep(0.02)
                     print('放棋子成功')
-                    step.down()
+
+                    step.up() # 抬起电磁铁
                     time.sleep(0.02)
-                    e.close()
-                    time.sleep(0.02)
-                    step.up()
-                    time.sleep(0.02)
-                    move(point_key[5][0], point_key[5][1], 0, 0)
+
+                    move(point_key[5][0], point_key[5][1], -50, -50)
                     sys.exit()
-                    break
+
+ 
