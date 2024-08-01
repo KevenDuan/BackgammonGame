@@ -73,7 +73,7 @@ def move_black(pos):
     while len(black_list) > 0 and len(point_axis) != 0:
         zip_axis = black_list.pop()
         black_x, black_y = zip_axis[0], zip_axis[1]
-        print('black_axis: ', (black_x, black_y))
+        # print('black_axis: ', (black_x, black_y))
         while True: 
             e = electromagnets.Electromagnets()
             hx, frame = cap.read()
@@ -199,7 +199,10 @@ if __name__ == "__main__":
                         gammon.board[t[0]][t[1]] = 'X'
                         xx, yy = gammon.find_best_move(gammon.board)
                         pos = gammon.axis_turn_key(xx, yy)
+                        input('Are you ok?')
+                        sta = time.time()
                         move_black(pos)
+                        print(f"time: {time.time() - sta} s")
                         gammon.board[xx][yy] = 'O'
 
                         if gammon.evaluate(gammon.board) == 10:
