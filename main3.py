@@ -13,7 +13,7 @@ def move(now_x, now_y, dist_x, dist_y):
     step.setup()
     abs_x = abs(now_x - dist_x) * 50
     abs_y = abs(now_y - dist_y) * 50
-    if abs_x <= 1 and abs_y <= 1:
+    if abs_x <= 5 and abs_y <= 5:
         step.y_backward(3000)
         print('sucessfully!')
         return True

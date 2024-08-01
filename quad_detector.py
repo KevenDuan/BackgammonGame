@@ -73,7 +73,8 @@ class QuadDetector:
                 perimeter = cv2.arcLength(approx, True)
                 # print('perimeter:', perimeter)
                 perimeter_allowed = (perimeter <= self.max_perimeter) and (perimeter >= self.min_perimeter)
-                # cv2.drawContours(img, [approx], 0, (255, 0, 0), 2)
+                # cv2.drawContours(self.img, [approx], 0, (255, 0, 0), 2)
+                # cv2.imshow('contours', self.img)
 
                 if perimeter_allowed and perimeter > max_perimeter_now:
                     # 计算四边形角度
@@ -279,13 +280,11 @@ class QuadDetector:
             )
             return img
 
-        img_drawed = self.chess_detection(self.img[:, :])
+        img_drawed = self.chess_detection(self.img)
         img_drawed = draw_lines_points(self.img, self.vertices)          # 绘制最大四边形
         img_drawed = draw_lines_points(img_drawed, self.scale_vertices)  # 绘制缩放四边形
         img_drawed = draw_point_text(img_drawed, self.intersection[0], self.intersection[1]) # 绘制交点
         self.point_list.append((self.intersection[0], self.intersection[1]))
-
-        
 
         new_x, new_y = self.detectMachineArm(img)
         if new_x != new_y != -1:
@@ -361,7 +360,7 @@ class QuadDetector:
         dst1 = cv2.GaussianBlur(frame, (9, 9), 0)
         dst2 = cv2.GaussianBlur(frame, (9, 9), 0)
         lower_white = np.array([0, 0, 46])
-        upper_white = np.array([180, 70, 255])
+        upper_white = np.array([180, 50, 255]) # s:40~75
         lower_black = np.array([0, 0, 0])
         upper_black = np.array([180, 255, 131])
 
@@ -388,7 +387,7 @@ class QuadDetector:
         for contour in contours:
             x, y, w, h = cv2.boundingRect(contour)
             color = ""
-            if 2000 > cv2.contourArea(contour) > 200 and h * 1.25 > w and w * 1.25 > h:  # 设置最小区域面积以排除噪声
+            if 3000 > cv2.contourArea(contour) > 300 and h * 1.25 > w and w * 1.25 > h:  # 设置最小区域面积以排除噪声
                 if np.any(white_mask[y:y + h, x:x + w]):
                     color = "white"
                     cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 0, 255), 2)
@@ -426,7 +425,7 @@ if __name__ == '__main__':
         up, down, l, r = 100, -80, 140, -120
         frame = frame[up:down, l:r]
         # 初始化四边形检测器
-        quad_detector = QuadDetector(9999, 200, 200/600, 30, 6)
+        quad_detector = QuadDetector(1000, 200, 200/600, 30, 6)
 
         try:
             # 四边形检测结果
@@ -440,6 +439,7 @@ if __name__ == '__main__':
         x, y = quad_detector.detectMachineArm(frame)
         print('black_list: ', quad_detector.black_list)
         print('white_list: ', quad_detector.white_list)
+        print(quad_detector.point_key)
 
 
         cv2.imshow('img', frame)

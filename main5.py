@@ -6,19 +6,16 @@ import electromagnets
 import time
 import backgammon
 import sys
+import ledContorl
 
 def move(now_x, now_y, dist_x, dist_y):
     """
     从(now_x, now_y) -> (dist_x, dist_y)
     """
-    if now_x == now_y == -1:
-        step.y_backward(3000)
-        step.x_forward(3000)
-
     step.setup()
     abs_x = abs(now_x - dist_x) * 50
     abs_y = abs(now_y - dist_y) * 50
-    if abs_x <= 1 and abs_y <= 1:
+    if abs_x <= 5 and abs_y <= 5:
         step.y_backward(3000)
         print('sucessfully!')
         return True
@@ -67,7 +64,8 @@ def black_chess_detection(frame):
     return frame
 
 def move_white(pos):
-    # 从机械臂当前位置移动到白色棋子        
+    # 从机械臂当前位置移动到白色棋子    
+    sta = time.time()      
     while len(white_list) > 0 and len(point_axis) != 0:
         zip_axis = white_list.pop()
         white_x, white_y = zip_axis[0], zip_axis[1]
@@ -111,11 +109,15 @@ def move_white(pos):
                 e.close() # 释放吸力
                 time.sleep(0.02)
                 print('放棋子成功')
+                print(f"time: {time.time() - sta - 4} s")
+                led = ledContorl.Led()
+                led.open()
+
 
                 step.up() # 抬起电磁铁
                 time.sleep(0.02)
 
-                move(point_key[pos][0], point_key[pos][1], -50, -50)
+                move(point_key[pos][0], point_key[pos][1], 400, -50)
                 return
 
 if __name__ == "__main__":
@@ -125,6 +127,7 @@ if __name__ == "__main__":
     quad_detector = quad_detector.QuadDetector(9999, 200, 200/600, 30, 6) # 初始化视觉类
     e = electromagnets.Electromagnets() # 初始化电磁铁
     gammon = backgammon.Backgammon() # 初始化三字棋算法类
+    led = ledContorl.Led()
 
     point_axis = []
     black_list = [] # 存黑色棋子
@@ -171,7 +174,7 @@ if __name__ == "__main__":
                 frame = frame[up:down, l:r]
                 quad_detector.chess_detection(frame)
                 white_list = quad_detector.white_list
-                print(white_list)
+                # print(white_list)
         # 显示出棋盘的区域
         # vertices = sorted(vertices, key=lambda x:x[0] + x[1])
         # x_range = [vertices[0][0], vertices[-1][0]]
@@ -188,9 +191,9 @@ if __name__ == "__main__":
 
             black_list = [] # 读取前需要清空
             black_chess_detection(frame) # 重新检测黑色棋子
-            print('black_list: ', black_list)
-            print('white_list:', white_list)
-            print(point_key)
+            # print('black_list: ', black_list)
+            # print('white_list:', white_list)
+            # print(point_key)
 
             for b_x, b_y in black_list:
                 for key, value in point_key.items():
@@ -201,6 +204,7 @@ if __name__ == "__main__":
                         gammon.board[t[0]][t[1]] = 'X'
                         xx, yy = gammon.find_best_move(gammon.board)
                         pos = gammon.axis_turn_key(xx, yy)
+                        input('Are you ok?')
                         move_white(pos)
                         gammon.board[xx][yy] = 'O'
 

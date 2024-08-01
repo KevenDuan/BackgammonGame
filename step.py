@@ -61,15 +61,13 @@ class StepControl:
         GPIO.cleanup()
 
     def down(self):
-        self.send_pulse(self.IN5, self.IN6, 2000, False)
+        self.send_pulse(self.IN5, self.IN6, 2800, False)
 
     def up(self):
-        self.send_pulse(self.IN5, self.IN6, 2000, True)
+        self.send_pulse(self.IN5, self.IN6, 2800, True)
 
 if __name__ == "__main__":
     step = StepControl()
-    # step.x_forward(1000)
-    step.up()
-
+    # step.x_forward(10000)
+    step.down()
     step.clean()
-
